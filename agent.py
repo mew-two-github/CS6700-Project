@@ -27,9 +27,18 @@ class Agent:
 
         if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
             self.Q = {}
-            self.alpha = 1
-            self.beta = 0.2
-            self.epsilon = 0.15
+            if self.env_name == 'kbca':
+              self.alpha = 0.05
+              self.beta = 0.7
+              self.epsilon = 0.25
+            elif self.env_name == 'kbcb':
+              self.alpha = 0.01
+              self.beta = 0.7
+              self.epsilon = 0.3
+            elif self.env_name == 'kbcc':
+              self.alpha = 0.1
+              self.beta = 0.5
+              self.epsilon = 0.05
             if self.env_name == 'kbca' or self.env_name == 'kbcb':
               self.no_actions = 2
             else:
@@ -48,6 +57,7 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
+        action = 1
         #Generating state from observation
         if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':        
           count = 0
@@ -64,8 +74,6 @@ class Agent:
           else:
             action = np.random.randint(self.no_actions)
 
-
-        return 1
         #raise NotImplementedError
         return action
 
@@ -82,7 +90,7 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
-
+        action = 0
         if self.env_name == 'kbca' or self.env_name == 'kbcb':
           count = 0
           for i in range(16):
@@ -90,14 +98,14 @@ class Agent:
               count = count+1
           next_state = count
 
-          if done == "True" and obs[count]==1:
+          if done == "True" and obs[count-1]==1:
             state = next_state
             action = 0
-          elif done == "True" and obs[count]==0:
+          elif done == "True" and obs[count-1]==0:
             state = next_state-1
             action = 1
           else:
-            state = next_state - 1  
+            state = next_state-1  
             action = 1
 
           temp = -np.inf
@@ -124,20 +132,15 @@ class Agent:
               count = count+1
           next_state = count
 
-          if done == "True" and obs[count]==1:
+          action = info
+          if done == "True" and action == 0:
             state = next_state
-            action = 0
-          elif done == "True" and obs[count]==0:
+          elif done == "True" and action == 1:
             state = next_state-1
-            action = 1
+          elif done == "True" and action == 2:
+            state = next_state-1
           else:
             state = next_state - 1  
-            action = 1
-
-          action = info
-
-          
-
 
           temp = -np.inf
 
@@ -169,6 +172,7 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
+        action = 0
         if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':       
           count = 0
           for i in range(16):
@@ -197,6 +201,7 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
+        action = 0
         if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
           count = 0
           for i in range(16):
