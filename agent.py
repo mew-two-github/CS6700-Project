@@ -1,5 +1,6 @@
 from config import *
 import time
+import numpy as np
 
 """
 
@@ -19,12 +20,24 @@ Use the state saved in train phase here.
 
 """
 
-
 class Agent:
     def __init__(self, env):
         self.env_name = env
         self.config = config[self.env_name]
-        pass
+
+        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
+            self.Q = {}
+            self.alpha = 1
+            self.beta = 0.2
+            self.epsilon = 0.15
+            if self.env_name == 'kbca' or self.env_name == 'kbcb':
+              self.no_actions = 2
+            else:
+              self.no_actions = 3
+            for i in range(16):
+                for a in range(self.no_actions):
+                  self.Q.update({str((i, a)) : 0})
+         
 
     def register_reset_train(self, obs):
         """
@@ -35,8 +48,25 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
+        #Generating state from observation
+        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':        
+          count = 0
+          for i in range(16):
+            if obs[i] != "":
+              count = count+1
+          state = count
+          temp = -np.inf
+          if np.random.uniform(low=0.0, high=1.0, size=None) > (1-self.epsilon):
+            for a in range(self.no_actions):
+              if self.Q[str((state,a))] > temp:
+                  action = a
+                  temp = self.Q[str((state,a))]
+          else:
+            action = np.random.randint(self.no_actions)
 
-        return 0
+
+        return 1
+        #raise NotImplementedError
         return action
 
     def compute_action_train(self, obs, reward, done, info):
@@ -53,7 +83,81 @@ class Agent:
             - action - discretized 'action' from raw 'observation'
         """
 
-        return 0
+        if self.env_name == 'kbca' or self.env_name == 'kbcb':
+          count = 0
+          for i in range(16):
+            if obs[i] != "":
+              count = count+1
+          next_state = count
+
+          if done == "True" and obs[count]==1:
+            state = next_state
+            action = 0
+          elif done == "True" and obs[count]==0:
+            state = next_state-1
+            action = 1
+          else:
+            state = next_state - 1  
+            action = 1
+
+          temp = -np.inf
+
+          for b in range(2):
+            if self.Q[str((next_state,b))] > temp:
+              temp = self.Q[str((next_state, b))]
+          self.Q[str((state, action))] = (1 - self.beta)*self.Q[str((state,action))] + self.beta*(reward+self.alpha*temp)
+
+          state = next_state
+          temp = -np.inf
+          if np.random.uniform(low=0.0, high=1.0, size=None) > (1-self.epsilon):
+            for a in range(2):
+              if self.Q[str((state,a))] > temp:
+                  action = a
+                  temp = self.Q[str((state,a))]
+          else:
+            action = np.random.randint(2)  
+
+        elif self.env_name == 'kbcc':
+          count = 0
+          for i in range(16):
+            if obs[i] != "":
+              count = count+1
+          next_state = count
+
+          if done == "True" and obs[count]==1:
+            state = next_state
+            action = 0
+          elif done == "True" and obs[count]==0:
+            state = next_state-1
+            action = 1
+          else:
+            state = next_state - 1  
+            action = 1
+
+          action = info
+
+          
+
+
+          temp = -np.inf
+
+          for b in range(3):
+            if self.Q[str((next_state,b))] > temp:
+              temp = self.Q[str((next_state, b))]
+          self.Q[str((state,action))] = (1 - self.beta)*self.Q[str((state,action))] + self.beta*(reward+self.alpha*temp)
+
+          state = next_state
+          temp = -np.inf
+          if np.random.uniform(low=0.0, high=1.0, size=None) > (1-self.epsilon):
+            for a in range(3):
+              if self.Q[str((state,a))] > temp:
+                  action = a
+                  temp = self.Q[str((state,a))]
+          else:
+            action = np.random.randint(3)  
+
+
+        #raise NotImplementedError
         return action
 
     def register_reset_test(self, obs):
@@ -65,8 +169,19 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
+        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':       
+          count = 0
+          for i in range(16):
+            if obs[i] != "":
+              count = count+1
+          state = count
+          temp = -np.inf
+          for a in range(self.no_actions):
+            if self.Q[str((state,a))] > temp:
+              action = a
+              temp = self.Q[str((state,a))]
 
-        return 0
+        #raise NotImplementedError
         return action
 
     def compute_action_test(self, obs, reward, done, info):
@@ -82,6 +197,18 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
+        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
+          count = 0
+          for i in range(16):
+            if obs[i] != "":
+              count = count+1
+          state = count
+          temp = -np.inf
+          for a in range(self.no_actions):
+            if self.Q[str((state,a))] > temp:
+              action = a
+              temp = self.Q[str((state,a))]
 
-        return 0
+
+        #raise NotImplementedError
         return action
