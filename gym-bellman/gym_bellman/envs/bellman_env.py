@@ -129,7 +129,7 @@ class BellmansDPBase(gym.Env):
       reward = self.compute_total_reward()
       done = True
       self.history[self.step_count] = -1
-      return obs, reward, done, action
+      return obs, reward, done, {}
 
     correct_prob = self.easy_prob_init * (self.easy_gamma ** self.step_count) if action == 1 else self.hard_prob_init * (self.hard_gamma ** self.step_count)
     answer_status = random.random() < correct_prob
@@ -139,7 +139,7 @@ class BellmansDPBase(gym.Env):
     self.history[self.step_count] = 1 if answer_status else 0
     reward = self.compute_total_reward() if done else 0
     self.step_count += 1
-    return obs, reward, done, action
+    return obs, reward, done, {}
 
 
 class BellmanDpA(BellmansDPBase):
