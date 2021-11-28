@@ -40,6 +40,7 @@ class Agent:
               self.alpha = 0.1
               self.beta = 0.5
               self.epsilon = 0.05
+              self.previous_action = 0
             if self.env_name == 'kbca' or self.env_name == 'kbcb':
               self.no_actions = 2
             else:
@@ -93,6 +94,8 @@ class Agent:
                   temp = self.Q[str((state,a))]
           else:
             action = np.random.randint(self.no_actions)
+          if self.env_name == 'kbcc':
+            self.previous_action = action
         elif self.env_name == 'acrobot':
           # Finding state from given observation
           theta1 = np.arctan(obs[1]/obs[0])
@@ -176,7 +179,7 @@ class Agent:
               count = count+1
           next_state = count
 
-          action = info
+          action = self.previous_action
           if done == "True" and action == 0:
             state = next_state
           elif done == "True" and action == 1:
@@ -185,6 +188,7 @@ class Agent:
             state = next_state-1
           else:
             state = next_state - 1  
+          
 
           temp = -np.inf
 
@@ -202,6 +206,7 @@ class Agent:
                   temp = self.Q[str((state,a))]
           else:
             action = np.random.randint(3)  
+          self.previous_action = action
         elif self.env_name == 'acrobot':
 
           # Finding state from given observation
