@@ -1,6 +1,7 @@
 from config import *
 import time
 import numpy as np
+import math
 
 """
 
@@ -46,6 +47,25 @@ class Agent:
             for i in range(16):
                 for a in range(self.no_actions):
                   self.Q.update({str((i, a)) : 0})
+        elif self.env_name == 'acrobot':
+          self.alpha = 1
+          self.beta = 0.2
+          self.epsilon = 0
+          self.Q = {}
+          # 3 actions: -1, 0, 1
+          self.no_actions = 3
+          # Number of discrete states theta and thetadot are split into
+          self.buckets = 5
+          for i in range(self.buckets):
+            for j in range(self.buckets):
+              for k in range(self.buckets):
+                for l in range(self.buckets):
+                  for a in range(self.no_actions):
+                    state = str(i) + str(j) + str(k) + str(l)
+                    self.Q.update({str((state, a)) : 0})
+          #print(self.Q.keys())
+          self.previous_state = state
+          self.previous_action = a
          
 
     def register_reset_train(self, obs):
@@ -73,6 +93,29 @@ class Agent:
                   temp = self.Q[str((state,a))]
           else:
             action = np.random.randint(self.no_actions)
+        elif self.env_name == 'acrobot':
+          # Finding state from given observation
+          theta1 = np.arctan(obs[1]/obs[0])
+          theta2 = np.arctan(obs[3]/obs[2])
+          thetadot1 = obs[4]
+          thetadot2 = obs[5]
+          bucket1 = min(math.floor((theta1 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket2 = min(math.floor((theta2 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket3 = min(math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          bucket4 = min(math.floor((thetadot2 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          state = str(bucket1) + str(bucket2) + str(bucket3) + str(bucket4)
+          temp = -np.inf
+          if np.random.uniform(low=0.0, high=1.0, size=None) > (1-self.epsilon):
+            for a in range(self.no_actions):
+              if self.Q[str((state,a))] > temp:
+                  action = a - 1
+                  temp = self.Q[str((state,a))]
+          else:
+            action = np.random.randint(self.no_actions) - 1
+          self.previous_state = state
+          self.previous_action = action + 1
+
+
 
         #raise NotImplementedError
         return action
@@ -90,7 +133,8 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
-        action = 0
+        action = 1
+
         if self.env_name == 'kbca' or self.env_name == 'kbcb':
           count = 0
           for i in range(16):
@@ -158,6 +202,40 @@ class Agent:
                   temp = self.Q[str((state,a))]
           else:
             action = np.random.randint(3)  
+        elif self.env_name == 'acrobot':
+
+          # Finding state from given observation
+          theta1 = np.arctan(obs[1]/obs[0])
+          theta2 = np.arctan(obs[3]/obs[2])
+          thetadot1 = obs[4]
+          thetadot2 = obs[5]
+          bucket1 = min(math.floor((theta1 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket2 = min(math.floor((theta2 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket3 = min(math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          bucket4 = min(math.floor((thetadot2 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          next_state = str(bucket1) + str(bucket2) + str(bucket3) + str(bucket4)
+          # Storing previous state and action for Q value update
+          state = self.previous_state
+          a = self.previous_action
+          # Find best action in current state and update Q value
+          temp = -np.inf
+          for b in range(self.no_actions):
+            if self.Q[str((next_state,b))] > temp:
+              temp = self.Q[str((next_state, b))]
+          self.Q[str((state, a))] = (1 - self.beta)*self.Q[str((state,a))] + self.beta*(reward+self.alpha*temp)
+
+          # Finding new action using epsilon-greedy
+          state = next_state
+          temp = -np.inf
+          if np.random.uniform(low=0.0, high=1.0, size=None) > (1-self.epsilon):
+            for a in range(self.no_actions):
+              if self.Q[str((state,a))] > temp:
+                  action = a - 1
+                  temp = self.Q[str((state,a))]
+          else:
+            action = np.random.randint(self.no_actions)  - 1
+          self.previous_action = action + 1 # since allowed actions are -1,0,1 and key of dictionary is of the the form 0,1,2
+          self.previous_state = next_state
 
 
         #raise NotImplementedError
@@ -184,6 +262,25 @@ class Agent:
             if self.Q[str((state,a))] > temp:
               action = a
               temp = self.Q[str((state,a))]
+        elif self.env_name == 'acrobot':
+          # Finding state from given observation
+          theta1 = np.arctan(obs[1]/obs[0])
+          theta2 = np.arctan(obs[3]/obs[2])
+          thetadot1 = obs[4]
+          thetadot2 = obs[5]
+          bucket1 = min(math.floor((theta1 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket2 = min(math.floor((theta2 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket3 = min(math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          bucket4 = min(math.floor((thetadot2 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          state = str(bucket1) + str(bucket2) + str(bucket3) + str(bucket4)
+          # Pick the best action
+          temp = -np.inf
+          for a in range(self.no_actions):
+            if self.Q[str((state,a))] > temp:
+                action = a - 1
+                temp = self.Q[str((state,a))]
+          self.previous_action = action + 1 # since allowed actions are -1,0,1 and key of dictionary is of the the form 0,1,2
+
 
         #raise NotImplementedError
         return action
@@ -213,7 +310,22 @@ class Agent:
             if self.Q[str((state,a))] > temp:
               action = a
               temp = self.Q[str((state,a))]
-
-
+        elif self.env_name == 'acrobot':
+          # Finding state from given observation
+          theta1 = np.arctan(obs[1]/obs[0])
+          theta2 = np.arctan(obs[3]/obs[2])
+          thetadot1 = obs[4]
+          thetadot2 = obs[5]
+          bucket1 = min(math.floor((theta1 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket2 = min(math.floor((theta2 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
+          bucket3 = min(math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          bucket4 = min(math.floor((thetadot2 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
+          state = str(bucket1) + str(bucket2) + str(bucket3) + str(bucket4)
+          # Finding best action
+          temp = -np.inf
+          for a in range(self.no_actions):
+            if self.Q[str((state,a))] > temp:
+                action = a - 1
+                temp = self.Q[str((state,a))]
         #raise NotImplementedError
         return action
