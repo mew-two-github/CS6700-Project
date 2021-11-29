@@ -47,7 +47,7 @@ class Agent:
 
         elif self.env_name == 'acrobot':
           # Number of discrete states theta and thetadot are split into
-          self.buckets = 10
+          self.buckets = 15
           self.Q = {}
           for i in range(self.buckets):
             for j in range(self.buckets):

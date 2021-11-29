@@ -1,5 +1,5 @@
 # Storing hyperparameters
-acrobot = {"alpha" : 1, "beta" : 0.5, "epsilon" : 0.9,"no_actions" : 3}
+acrobot = {"alpha" : 1, "beta" : 0.1, "epsilon" : 0.9,"no_actions" : 3}
 
 taxi = {"alpha" : 1, "beta" : 0.2, "epsilon" : 0.91,"no_actions" : 6}
 
