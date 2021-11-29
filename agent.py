@@ -26,6 +26,8 @@ class Agent:
         self.env_name = env 
         self.config = config[self.env_name]
 
+        # Object to count episodes (for decay)
+        self.episode = 1
         # Loading hyperparameters
         self.alpha = self.config["alpha"]
         self.beta = self.config["beta"]
@@ -44,7 +46,6 @@ class Agent:
             
 
         elif self.env_name == 'acrobot':
-          self.decay = 0.9
           # Number of discrete states theta and thetadot are split into
           self.buckets = 10
           self.Q = {}
@@ -53,7 +54,7 @@ class Agent:
               for k in range(self.buckets):
                 for l in range(self.buckets):
                   for a in range(self.no_actions):
-                    state = str(i) + str(j) + str(k) + str(l)
+                    state = (i,j,k,l)
                     self.Q.update({str((state, a)) : 0})
           #print(self.Q.keys())
           self.previous_state = state
@@ -63,7 +64,29 @@ class Agent:
             for a in range(self.no_actions):
               self.Q.update({str((i,a)) : 0})
           self.prev = 1
-         
+    
+    def state_from_obs(self,obs):
+
+      theta1 = np.arctan2(obs[1],obs[0])
+      theta2 = np.arctan2(obs[3],obs[2])
+
+      thetadot1 = obs[4]
+      thetadot2 = obs[5]
+      
+      bucket1 = math.floor((theta1 + math.pi)/(2*math.pi/self.buckets))
+      bucket1 = max(min(bucket1,self.buckets-1),0)
+      
+      bucket2 = math.floor((theta2 + math.pi)/(2*math.pi/self.buckets))
+      bucket2 = max(min(bucket2,self.buckets-1),0)
+      
+      bucket3 = math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets))
+      bucket3 = max(min(bucket3,self.buckets-1),0)
+      
+      bucket4 = math.floor((thetadot2 + 28.28)/(2*28.28/self.buckets))
+      bucket4 = max(min(bucket4,self.buckets-1),0)
+
+      state = (bucket1,bucket2,bucket3,bucket4)
+      return state
 
     def register_reset_train(self, obs):
         """
@@ -84,17 +107,12 @@ class Agent:
         
         elif self.env_name == 'acrobot':
           action = 0
-          theta1 = np.arctan(obs[1]/obs[0])
-          theta2 = np.arctan(obs[3]/obs[2])
-          thetadot1 = obs[4]
-          thetadot2 = obs[5]
-          bucket1 = min(math.floor((theta1 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
-          bucket2 = min(math.floor((theta2 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
-          bucket3 = min(math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
-          bucket4 = min(math.floor((thetadot2 + 28.28)/(2*28.28/self.buckets)),self.buckets-1)
-          state = str(bucket1) + str(bucket2) + str(bucket3) + str(bucket4)
+          state = self.state_from_obs(obs)
           self.previous_state = state
           self.previous_action = action + 1
+          self.episode +=1
+          if self.episode % 200 == 0:
+            self.epsilon = self.epsilon - 0.07
 
         else:
           state = obs
@@ -108,6 +126,7 @@ class Agent:
             action = np.random.randint(self.no_actions)
           self.previous_state = state
           self.previous_action = action
+        
 
         return action
 
@@ -158,15 +177,7 @@ class Agent:
 
         elif self.env_name == 'acrobot':
           # Finding state from given observation
-          theta1 = np.arctan(obs[1]/obs[0])
-          theta2 = np.arctan(obs[3]/obs[2])
-          thetadot1 = obs[4]
-          thetadot2 = obs[5]
-          bucket1 = min(math.floor((theta1 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
-          bucket2 = min(math.floor((theta2 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
-          bucket3 = min(math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
-          bucket4 = min(math.floor((thetadot2 + 28.28)/(2*28.28/self.buckets)),self.buckets-1)
-          next_state = str(bucket1) + str(bucket2) + str(bucket3) + str(bucket4)
+          next_state = self.state_from_obs(obs)
           # Storing previous state and action for Q value update
           state = self.previous_state
           a = self.previous_action
@@ -265,15 +276,7 @@ class Agent:
         
         elif self.env_name == 'acrobot':
           # Finding state from given observation
-          theta1 = np.arctan(obs[1]/obs[0])
-          theta2 = np.arctan(obs[3]/obs[2])
-          thetadot1 = obs[4]
-          thetadot2 = obs[5]
-          bucket1 = min(math.floor((theta1 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
-          bucket2 = min(math.floor((theta2 + math.pi/2)/(math.pi/self.buckets)),self.buckets-1)
-          bucket3 = min(math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets)),self.buckets-1)
-          bucket4 = min(math.floor((thetadot2 + 28.28)/(2*28.28/self.buckets)),self.buckets-1)
-          state = str(bucket1) + str(bucket2) + str(bucket3) + str(bucket4)
+          state = self.state_from_obs(obs)
           # Finding best action
           temp = -np.inf
           for a in range(self.no_actions):
