@@ -26,8 +26,6 @@ class Agent:
         self.env_name = env 
         self.config = config[self.env_name]
 
-        # Object to count episodes (for decay)
-        self.episode = 1
         # Loading hyperparameters
         self.alpha = self.config["alpha"]
         self.beta = self.config["beta"]
@@ -46,18 +44,18 @@ class Agent:
             
 
         elif self.env_name == 'acrobot':
-          # Number of discrete states theta and thetadot are split into
-          self.buckets = 10
-          self.Q = {}
-          for i in range(self.buckets):
-            for j in range(self.buckets):
-              for k in range(self.buckets):
-                for l in range(self.buckets):
-                  for a in range(self.no_actions):
-                    state = (i,j,k,l)
-                    self.Q.update({str((state, a)) : 0})
-          #print(self.Q.keys())
-          self.previous_state = state
+
+          self.theta = np.random.randn(4,3)
+          self.previous_state = np.zeros(shape=(4))
+          self.no_actions = 3
+          self.X = np.zeros(shape=(4))
+          self.A = np.zeros(shape=(1))
+          self.episode = 0
+          self.value = np.zeros(shape=(0))
+          self.beta = 0.0001
+          self.alpha = 0.99
+          self.grads = []
+
         else:
           self.Q = {}
           for i in range(501):
@@ -65,6 +63,20 @@ class Agent:
               self.Q.update({str((i,a)) : 0})
           self.prev = 1
     
+    def p_acro(self,state):
+      e = np.exp(state.dot(self.theta))
+      p = e/e.sum()
+      return p
+    
+    def pg_acro(self,X,A):
+      p = self.p_acro(X)
+      mat = p.reshape(-1,1)
+      dgibbs = np.diagflat(mat) - np.dot(mat, mat.T)
+      dgibbs = dgibbs[A+1,:]
+      dlog = dgibbs/p[A+1]
+      pg = X.reshape(1,-1).T.dot(dlog[None,:])
+      return pg
+
     def state_from_obs(self,obs):
 
       theta1 = np.arctan2(obs[1],obs[0])
@@ -72,20 +84,8 @@ class Agent:
 
       thetadot1 = obs[4]
       thetadot2 = obs[5]
-      
-      bucket1 = math.floor((theta1 + math.pi)/(2*math.pi/self.buckets))
-      bucket1 = max(min(bucket1,self.buckets-1),0)
-      
-      bucket2 = math.floor((theta2 + math.pi)/(2*math.pi/self.buckets))
-      bucket2 = max(min(bucket2,self.buckets-1),0)
-      
-      bucket3 = math.floor((thetadot1 + 12.57)/(2*12.57/self.buckets))
-      bucket3 = max(min(bucket3,self.buckets-1),0)
-      
-      bucket4 = math.floor((thetadot2 + 28.28)/(2*28.28/self.buckets))
-      bucket4 = max(min(bucket4,self.buckets-1),0)
 
-      state = (bucket1,bucket2,bucket3,bucket4)
+      state = np.array([theta1,theta2,thetadot1,thetadot2])
       return state
 
     def register_reset_train(self, obs):
@@ -106,13 +106,27 @@ class Agent:
           self.previous_action = action
         
         elif self.env_name == 'acrobot':
-          action = 0
-          state = self.state_from_obs(obs)
-          self.previous_state = state
-          self.previous_action = action + 1
-          self.episode +=1
-          """ if self.episode % 200 == 0:
-            self.epsilon = self.epsilon - 0.07 """
+          for i in range(len(self.value)): 
+            self.theta += self.beta*self.value[i]*self.grads[i]
+          
+          #if self.episode%10 == 0:
+            #print(self.theta)
+            #print(self.value)
+            #print(self.A)
+            # print(self.value[i]*self.pg_acro(self.X[i,:],self.A[i]))
+            # print(self.A[i])
+            # print(self.p_acro(self.X[i,:]))
+            #print((self.X[i,:],self.A[i]))
+              
+          self.X = self.state_from_obs(obs)
+          p = self.p_acro(self.X)
+          action = np.random.choice([-1,0,1],1,p=p)[0]
+          self.A = np.array([action])
+          self.value = np.zeros(shape=(0))
+          self.grads = []
+
+          self.episode += 1
+          
 
         else:
           state = obs
@@ -176,30 +190,18 @@ class Agent:
           self.previous_action = action
 
         elif self.env_name == 'acrobot':
-          # Finding state from given observation
-          next_state = self.state_from_obs(obs)
-          # Storing previous state and action for Q value update
-          state = self.previous_state
-          a = self.previous_action
-          # Find best action in current state and update Q value
-          temp = -np.inf
-          for b in range(self.no_actions):
-            if self.Q[str((next_state,b))] > temp:
-              temp = self.Q[str((next_state, b))]
-          self.Q[str((state, a))] = (1 - self.beta)*self.Q[str((state,a))] + self.beta*(reward+self.alpha*temp)
+          state = self.state_from_obs(obs)
+          self.X = np.vstack([self.X,state])
 
-          # Finding new action using epsilon-greedy
-          state = next_state
-          temp = -np.inf
-          if np.random.uniform(low=0.0, high=1.0, size=None) > (1-self.epsilon):
-            for a in range(self.no_actions):
-              if self.Q[str((state,a))] > temp:
-                  action = a - 1
-                  temp = self.Q[str((state,a))]
-          else:
-            action = np.random.randint(self.no_actions)  - 1
-          self.previous_action = action + 1 # since allowed actions are -1,0,1 and key of dictionary is of the the form 0,1,2
-          self.previous_state = next_state
+          p = self.p_acro(state)
+          #print(p,state)
+          action = np.random.choice([-1,0,1],1,p=p)[0]
+          self.A = np.hstack([self.A,action])
+          grad = self.pg_acro(state,action)
+          self.grads.append(grad)
+          self.value += self.alpha*reward
+          self.value = np.hstack([self.value,[reward]])
+
         else:
           next_state = obs
           temp = -np.inf
@@ -243,7 +245,9 @@ class Agent:
               action = a
               temp = self.Q[str((state,a))]
         elif self.env_name == 'acrobot':
-          action = 0
+          state = self.state_from_obs(obs)
+          p = self.p_acro(state)
+          action = np.random.choice([-1,0,1],1,p=p)[0]
 
         return action
 
@@ -275,14 +279,10 @@ class Agent:
 
         
         elif self.env_name == 'acrobot':
-          # Finding state from given observation
           state = self.state_from_obs(obs)
-          # Finding best action
-          temp = -np.inf
-          for a in range(self.no_actions):
-            if self.Q[str((state,a))] > temp:
-                action = a - 1
-                temp = self.Q[str((state,a))]
+          p = self.p_acro(state)
+          action = np.random.choice([-1,0,1],1,p=p)[0]
+
         else:
           state = obs
           temp = -np.inf
