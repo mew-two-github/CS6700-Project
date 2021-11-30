@@ -47,7 +47,7 @@ class Agent:
 
         elif self.env_name == 'acrobot':
           # Number of discrete states theta and thetadot are split into
-          self.buckets = 15
+          self.buckets = 10
           self.Q = {}
           for i in range(self.buckets):
             for j in range(self.buckets):
@@ -111,8 +111,8 @@ class Agent:
           self.previous_state = state
           self.previous_action = action + 1
           self.episode +=1
-          if self.episode % 200 == 0:
-            self.epsilon = self.epsilon - 0.07
+          """ if self.episode % 200 == 0:
+            self.epsilon = self.epsilon - 0.07 """
 
         else:
           state = obs
