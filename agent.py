@@ -72,8 +72,8 @@ class Agent:
           self.A = np.zeros(shape=(1))
           self.episode = 0
           self.value = np.zeros(shape=(0))
-          self.beta = 0.001
-          self.alpha = 0.99
+          self.beta = 0.0005
+          self.alpha = 1
           self.grads = []
 
         else:
@@ -134,24 +134,13 @@ class Agent:
         
         elif self.env_name == 'acrobot':
           for i in range(len(self.value)): 
-            self.theta += self.beta*self.value[i]*self.grads[i]
-          
-          #if self.episode%10 == 0:
-            #print(self.theta)
-            #print(self.value)
-            #print(self.A)
-            # print(self.value[i]*self.pg_acro(self.X[i,:],self.A[i]))
-            # print(self.A[i])
-            # print(self.p_acro(self.X[i,:]))
-            #print((self.X[i,:],self.A[i]))
-              
+            self.theta += self.beta*self.value[i]*self.grads[i]              
           self.X = self.state_from_obs(obs)
           p = self.p_acro(self.X)
           action = np.random.choice([-1,0,1],1,p=p)[0]
           self.A = np.array([action])
           self.value = np.zeros(shape=(0))
           self.grads = []
-
           self.episode += 1
           
 
@@ -246,9 +235,7 @@ class Agent:
         elif self.env_name == 'acrobot':
           state = self.state_from_obs(obs)
           self.X = np.vstack([self.X,state])
-
           p = self.p_acro(state)
-          #print(p,state)
           action = np.random.choice([-1,0,1],1,p=p)[0]
           self.A = np.hstack([self.A,action])
           grad = self.pg_acro(state,action)
@@ -315,9 +302,7 @@ class Agent:
         elif self.env_name == 'acrobot':
           state = self.state_from_obs(obs)
           p = self.p_acro(state)
-          #action = np.random.choice([-1,0,1],1,p=p)[0]
-          actions = np.array([-1,0,1],dtype='int')
-          action = actions[np.argmax(p)]
+          action = np.random.choice([-1,0,1],1,p=p)[0]
 
         return action
 
@@ -362,9 +347,7 @@ class Agent:
         elif self.env_name == 'acrobot':
           state = self.state_from_obs(obs)
           p = self.p_acro(state)
-          #action = np.random.choice([-1,0,1],1,p=p)[0]
-          actions = np.array([-1,0,1],dtype='int')
-          action = actions[np.argmax(p)]
+          action = np.random.choice([-1,0,1],1,p=p)[0]
 
         else:
           state = obs
