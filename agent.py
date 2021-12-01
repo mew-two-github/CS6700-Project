@@ -48,7 +48,6 @@ class Agent:
             self.episode_no = 0
             self.threshold_policy = 8
 
-            
 
         elif self.env_name == 'acrobot':
 
