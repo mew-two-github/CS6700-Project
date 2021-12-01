@@ -58,7 +58,7 @@ class Agent:
           self.A = np.zeros(shape=(1))
           self.episode = 0
           self.value = np.zeros(shape=(0))
-          self.beta = 0.0005
+          self.beta = 0.0001
           self.alpha = 0.99
           self.grads = []
 
