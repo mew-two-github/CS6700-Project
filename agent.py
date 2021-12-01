@@ -34,7 +34,8 @@ class Agent:
         self.previous_action = 0
 
         # Initialising empty J
-        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
+        
+        if self.env_name == 'kbca' or self.env_name == 'kbcb':
             self.J1 = {}
             self.J2 = {}
             self.J3 = {}
@@ -46,7 +47,20 @@ class Agent:
                   self.J4.update({str((i)) : 0})
             self.previous_state = 0
             self.episode_no = 0
-            self.threshold_policy = 8
+            self.threshold_policy = 9
+        # Initialising Q table with some preferences to accelerate training
+        elif self.env_name == 'kbcc':
+            self.Q = {}
+            for i in range(16):
+                for a in range(3):
+                  self.Q.update({str((i,a)) : 0})
+            for i in range(10):
+                  self.Q.update({str((i,1)) : 10000})
+            for i in range(10,10):
+                  self.Q.update({str((i,2)) : 10000})
+            for i in range(13,16):
+                  self.Q.update({str((i,0)) : 10000})
+            self.previous_state = 0
 
 
         elif self.env_name == 'acrobot':
@@ -58,7 +72,7 @@ class Agent:
           self.A = np.zeros(shape=(1))
           self.episode = 0
           self.value = np.zeros(shape=(0))
-          self.beta = 0.0001
+          self.beta = 0.001
           self.alpha = 0.99
           self.grads = []
 
@@ -85,11 +99,11 @@ class Agent:
 
     def state_from_obs(self,obs):
 
-      theta1 = np.arctan2(obs[1],obs[0])
-      theta2 = np.arctan2(obs[3],obs[2])
+      theta1 = np.arctan2(obs[1],obs[0])/np.pi
+      theta2 = np.arctan2(obs[3],obs[2])/np.pi
 
-      thetadot1 = obs[4]
-      thetadot2 = obs[5]
+      thetadot1 = obs[4]/(12.6)
+      thetadot2 = obs[5]/(28.3)
 
       state = np.array([theta1,theta2,thetadot1,thetadot2])
       return state
@@ -105,7 +119,14 @@ class Agent:
         """
         action = 1
         #Generating state from observation
-        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
+        if self.env_name == 'kbca' or self.env_name == 'kbcb':
+          state = 0
+          action = 1
+          self.previous_state = state
+          self.previous_action = action
+          self.episode_no = self.episode_no+1
+
+        elif self.env_name == 'kbcc':
           state = 0
           action = 1
           self.previous_state = state
@@ -165,7 +186,7 @@ class Agent:
         """
         action = 1
 
-        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
+        if self.env_name == 'kbca' or self.env_name == 'kbcb':
           count = 0
           for i in range(16):
             if obs[i] != '':
@@ -174,28 +195,54 @@ class Agent:
 
           if self.episode_no <=500:
               self.J1[str((self.previous_state))] = (1 - self.beta)*self.J1[str((self.previous_state))] + self.beta*(reward+self.J1[str((state))])
-              if(state <= 8):
+              if(state <= 9):
                   action = 1
               else:
                   action = 0
           elif self.episode_no >500 and self.episode_no <=1000:
               self.J2[str((self.previous_state))] = (1 - self.beta)*self.J2[str((self.previous_state))] + self.beta*(reward+self.J2[str((state))])
-              if(state <= 9):
+              if(state <= 10):
                   action = 1
               else:
                   action = 0
           elif self.episode_no >1000 and self.episode_no <=1500:
               self.J3[str((self.previous_state))] = (1 - self.beta)*self.J3[str((self.previous_state))] + self.beta*(reward+self.J3[str((state))])
-              if(state <= 10):
+              if(state <= 11):
                   action = 1
               else:
                   action = 0
           elif self.episode_no >1500 and self.episode_no <=2000:
               self.J4[str((self.previous_state))] = (1 - self.beta)*self.J4[str((self.previous_state))] + self.beta*(reward+self.J4[str((state))])
-              if(state <= 11):
+              if(state <= 12):
                   action = 1
               else:
                   action = 0
+
+        elif self.env_name == 'kbcc':
+            count = 0
+            for i in range(16):
+              if obs[i] != '':
+                count = count+1
+            next_state = count
+            temp = -np.inf
+            for b in range(self.no_actions):
+              if self.Q[str((next_state,b))] >= temp:
+                temp = self.Q[str((next_state,b))]
+            self.Q[str((self.previous_state,self.previous_action))] = (1 - self.beta)*self.Q[str((self.previous_state,self.previous_action))] + self.beta*(reward+self.alpha*temp)
+
+            state = next_state
+            if np.random.uniform(low=0.0, high=1.0, size=None) > (self.epsilon):
+              temp = -np.inf
+              for a in range(self.no_actions):
+                if self.Q[str((state,a))] >= temp:
+                    action = a
+                    temp = self.Q[str((state,a))]
+            else:
+              action = np.random.randint(self.no_actions)
+
+            self.previous_state = state
+            self.previous_action = action
+      
         elif self.env_name == 'acrobot':
           state = self.state_from_obs(obs)
           self.X = np.vstack([self.X,state])
@@ -241,17 +288,23 @@ class Agent:
         RETURNS     : 
             - action - discretized 'action' from raw 'observation'
         """
-        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
+        if self.env_name == 'kbca' or self.env_name == 'kbcb':
           action = 1
           state = 0
           if (self.J2[str((0))]>self.J1[str((0))] and self.J2[str((0))]>self.J3[str((0))] and self.J2[str((0))]>self.J4[str((0))]):
-              self.threshold_policy = 9
-          elif (self.J3[str((0))]>self.J1[str((0))] and self.J3[str((0))]>self.J2[str((0))] and self.J3[str((0))]>self.J4[str((0))]):
               self.threshold_policy = 10
-          elif (self.J4[str((0))]>self.J1[str((0))] and self.J4[str((0))]>self.J2[str((0))] and self.J4[str((0))]>self.J3[str((0))]):
+          elif (self.J3[str((0))]>self.J1[str((0))] and self.J3[str((0))]>self.J2[str((0))] and self.J3[str((0))]>self.J4[str((0))]):
               self.threshold_policy = 11
+          elif (self.J4[str((0))]>self.J1[str((0))] and self.J4[str((0))]>self.J2[str((0))] and self.J4[str((0))]>self.J3[str((0))]):
+              self.threshold_policy = 12
           else:
-              self.threshold_policy = 8
+              self.threshold_policy = 9
+          #print(self.threshold_policy)
+
+        elif self.env_name == 'kbcc':
+          state = 0
+          action = 1
+
         elif self.env_name == 'taxi':
           state = obs
           temp = -np.inf
@@ -262,7 +315,9 @@ class Agent:
         elif self.env_name == 'acrobot':
           state = self.state_from_obs(obs)
           p = self.p_acro(state)
-          action = np.random.choice([-1,0,1],1,p=p)[0]
+          #action = np.random.choice([-1,0,1],1,p=p)[0]
+          actions = np.array([-1,0,1],dtype='int')
+          action = actions[np.argmax(p)]
 
         return action
 
@@ -280,7 +335,7 @@ class Agent:
             - action - discretized 'action' from raw 'observation'
         """
         action = 0
-        if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
+        if self.env_name == 'kbca' or self.env_name == 'kbcb':
           count = 0
           for i in range(16):
             if obs[i] != "":
@@ -290,12 +345,26 @@ class Agent:
               action = 1
           else:
               action = 0
+        
+        elif self.env_name == 'kbcc':
+          count = 0
+          for i in range(16):
+            if obs[i] != "":
+              count = count+1
+          state = count
+          temp = -np.inf
+          for a in range(self.no_actions):
+            if self.Q[str((state,a))] >= temp:
+              action = a
+              temp = self.Q[str((state,a))]
 
         
         elif self.env_name == 'acrobot':
           state = self.state_from_obs(obs)
           p = self.p_acro(state)
-          action = np.random.choice([-1,0,1],1,p=p)[0]
+          #action = np.random.choice([-1,0,1],1,p=p)[0]
+          actions = np.array([-1,0,1],dtype='int')
+          action = actions[np.argmax(p)]
 
         else:
           state = obs
