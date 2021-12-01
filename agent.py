@@ -33,13 +33,20 @@ class Agent:
         self.no_actions = self.config["no_actions"]
         self.previous_action = 0
 
-        # Initialising empty Q table
+        # Initialising empty J
         if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
-            self.Q = {}
+            self.J1 = {}
+            self.J2 = {}
+            self.J3 = {}
+            self.J4 = {}
             for i in range(16):
-                for a in range(self.no_actions):
-                  self.Q.update({str((i, a)) : 0})
+                  self.J1.update({str((i)) : 0})
+                  self.J2.update({str((i)) : 0})
+                  self.J3.update({str((i)) : 0})
+                  self.J4.update({str((i)) : 0})
             self.previous_state = 0
+            self.episode_no = 0
+            self.threshold_policy = 8
 
             
 
@@ -160,35 +167,36 @@ class Agent:
         action = 1
 
         if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
-          if done == False:
-              count = 0
-              for i in range(16):
-                if obs[i] != '':
-                  count = count+1
-              next_state = count
-              temp = -np.inf  
-              for b in range(self.no_actions):
-                if self.Q[str((next_state,b))] >= temp:
-                  temp = self.Q[str((next_state,b))]
-              self.Q[str((self.previous_state,self.previous_action))] = (1 - self.beta)*self.Q[str((self.previous_state,self.previous_action))] + self.beta*(reward+self.alpha*temp)
+          count = 0
+          for i in range(16):
+            if obs[i] != '':
+              count = count+1
+          state = count
 
-              state = next_state
-              if np.random.uniform(low=0.0, high=1.0, size=None) > (self.epsilon):
-                temp = -np.inf
-                for a in range(self.no_actions):
-                  if self.Q[str((state,a))] >= temp:
-                      action = a
-                      temp = self.Q[str((state,a))]
+          if self.episode_no <=500:
+              self.J1[str((self.previous_state))] = (1 - self.beta)*self.J1[str((self.previous_state))] + self.beta*(reward+self.J1[str((state))])
+              if(state <= 8):
+                  action = 1
               else:
-                action = np.random.randint(self.no_actions)
-
-          else:
-              self.Q[str((self.previous_state,self.previous_action))] = (1 - self.beta)*self.Q[str((self.previous_state,self.previous_action))] + self.beta*(reward)
-              state = 0
-              action = 0
-          self.previous_state = state
-          self.previous_action = action
-
+                  action = 0
+          elif self.episode_no >500 and self.episode_no <=1000:
+              self.J2[str((self.previous_state))] = (1 - self.beta)*self.J2[str((self.previous_state))] + self.beta*(reward+self.J2[str((state))])
+              if(state <= 9):
+                  action = 1
+              else:
+                  action = 0
+          elif self.episode_no >1000 and self.episode_no <=1500:
+              self.J3[str((self.previous_state))] = (1 - self.beta)*self.J3[str((self.previous_state))] + self.beta*(reward+self.J3[str((state))])
+              if(state <= 10):
+                  action = 1
+              else:
+                  action = 0
+          elif self.episode_no >1500 and self.episode_no <=2000:
+              self.J4[str((self.previous_state))] = (1 - self.beta)*self.J4[str((self.previous_state))] + self.beta*(reward+self.J4[str((state))])
+              if(state <= 11):
+                  action = 1
+              else:
+                  action = 0
         elif self.env_name == 'acrobot':
           state = self.state_from_obs(obs)
           self.X = np.vstack([self.X,state])
@@ -237,6 +245,14 @@ class Agent:
         if self.env_name == 'kbca' or self.env_name == 'kbcb' or self.env_name == 'kbcc':
           action = 1
           state = 0
+          if (self.J2[str((0))]>self.J1[str((0))] and self.J2[str((0))]>self.J3[str((0))] and self.J2[str((0))]>self.J4[str((0))]):
+              self.threshold_policy = 9
+          elif (self.J3[str((0))]>self.J1[str((0))] and self.J3[str((0))]>self.J2[str((0))] and self.J3[str((0))]>self.J4[str((0))]):
+              self.threshold_policy = 10
+          elif (self.J4[str((0))]>self.J1[str((0))] and self.J4[str((0))]>self.J2[str((0))] and self.J4[str((0))]>self.J3[str((0))]):
+              self.threshold_policy = 11
+          else:
+              self.threshold_policy = 8
         elif self.env_name == 'taxi':
           state = obs
           temp = -np.inf
@@ -271,11 +287,10 @@ class Agent:
             if obs[i] != "":
               count = count+1
           state = count
-          temp = -np.inf
-          for a in range(self.no_actions):
-            if self.Q[str((state,a))] >= temp:
-              action = a
-              temp = self.Q[str((state,a))]
+          if state <= self.threshold_policy:
+              action = 1
+          else:
+              action = 0
 
         
         elif self.env_name == 'acrobot':
