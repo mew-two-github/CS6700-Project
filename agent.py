@@ -99,11 +99,11 @@ class Agent:
 
     def state_from_obs(self,obs):
 
-      theta1 = np.arctan2(obs[1],obs[0])/np.pi
-      theta2 = np.arctan2(obs[3],obs[2])/np.pi
+      theta1 = np.arctan2(obs[1],obs[0])
+      theta2 = np.arctan2(obs[3],obs[2])
 
-      thetadot1 = obs[4]/(12.6)
-      thetadot2 = obs[5]/(28.3)
+      thetadot1 = obs[4]
+      thetadot2 = obs[5]
 
       state = np.array([theta1,theta2,thetadot1,thetadot2])
       return state
